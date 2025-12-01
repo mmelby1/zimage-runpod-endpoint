@@ -1,0 +1,13 @@
+runpod==1.6.0
+
+# Core Hugging Face stack
+transformers
+accelerate
+safetensors
+huggingface_hub
+
+# Z-Image support lives in diffusers main
+git+https://github.com/huggingface/diffusers
+
+# Image utils
+Pillow
