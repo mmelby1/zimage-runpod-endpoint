@@ -1,6 +1,7 @@
 import base64
 import io
 import os
+from pathlib import Path
 
 import torch
 from diffusers import ZImagePipeline
@@ -14,28 +15,32 @@ pipe = None
 
 
 def init_pipeline():
+    """Initialize and cache the Z-Image pipeline."""
     global pipe
     if pipe is not None:
         return pipe
 
+    # Use larger RunPod volume for HF cache (fixes "no space left on device")
+    cache_dir = os.getenv("HF_CACHE_DIR", "/runpod-volume/hf_cache")
+    Path(cache_dir).mkdir(parents=True, exist_ok=True)
+
+    os.environ["HF_HOME"] = cache_dir
+    os.environ["HUGGINGFACE_HUB_CACHE"] = cache_dir
+
+    # Allow override from env, default to Z-Image-Turbo
     model_id = os.getenv("Z_IMAGE_MODEL_ID", "Tongyi-MAI/Z-Image-Turbo")
 
-    # Load Z-Image pipeline per HF quickstart
-    pipe = ZImagePipeline.from_pretrained(
-        model_id,
-        torch_dtype=torch.bfloat16,
-        low_cpu_mem_usage=False,
-    )
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    pipe.to(device)
 
-    # Optional: flash attention if supported
-    # try:
-    #     pipe.transformer.set_attention_backend("flash")
-    # except Exception:
-    #     pass
+    # Load Z-Image pipeline per HF quickstart
+    pipe_local = ZImagePipeline.from_pretrained(
+        model_id,
+        torch_dtype=torch.bfloat16,   # change to torch.float16 if your GPU complains
+        low_cpu_mem_usage=False,
+    ).to(device)
 
+    # Cache globally
+    pipe = pipe_local
     return pipe
 
 
@@ -79,7 +84,12 @@ def handler(event):
         seed = inp.get("seed")
 
         pipe = init_pipeline()
-        device = pipe._execution_device if hasattr(pipe, "_execution_device") else "cuda"
+
+        # Figure out which device the pipe is on
+        if hasattr(pipe, "_execution_device"):
+            device = pipe._execution_device
+        else:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
 
         if seed is not None:
             seed = int(seed)
