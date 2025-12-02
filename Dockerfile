@@ -13,8 +13,8 @@ RUN python3.11 -m pip install --upgrade pip && \
 COPY rp_handler.py /app/rp_handler.py
 
 # (Optional) set HF cache dir
-ENV HF_HOME=/app/hf_cache
-ENV HUGGINGFACE_HUB_CACHE=/app/hf_cache
+ENV HF_HOME=/runpod-volume/hf_cache
+ENV HUGGINGFACE_HUB_CACHE=/runpod-volume/hf_cache
 
 # If Z-Image ever becomes gated, set HF token at deploy time, e.g.:
 # ENV HUGGINGFACE_HUB_TOKEN=your_token_here
@@ -23,3 +23,4 @@ ENV HUGGINGFACE_HUB_CACHE=/app/hf_cache
 # RUN python3.11 -c "import rp_handler; rp_handler.init_pipeline()"
 
 CMD ["python3.11", "-u", "rp_handler.py"]
+
